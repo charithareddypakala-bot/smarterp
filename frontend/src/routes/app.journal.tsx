@@ -1,0 +1,139 @@
+import { useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { Save } from "lucide-react";
+import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/common/page-header";
+import { createJournalVoucher } from "@/services/journalService";
+
+export const Route = createFileRoute("/app/journal")({
+  component: JournalVoucherPage,
+});
+
+function JournalVoucherPage() {
+  const [journalNo, setJournalNo] = useState(`JRN-${Date.now()}`);
+  const [date, setDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+
+  const [debitLedger, setDebitLedger] = useState("");
+  const [creditLedger, setCreditLedger] = useState("");
+  const [amount, setAmount] = useState(0);
+  const [narration, setNarration] = useState("");
+
+  const handleSave = async () => {
+    if (!debitLedger || !creditLedger)
+      return toast.error("Enter both ledgers");
+
+    if (amount <= 0)
+      return toast.error("Enter amount");
+
+    const data = await createJournalVoucher({
+      journalNo,
+      date,
+      narration,
+      entries: [
+        {
+          ledgerName: debitLedger,
+          type: "Debit",
+          amount,
+        },
+        {
+          ledgerName: creditLedger,
+          type: "Credit",
+          amount,
+        },
+      ],
+    });
+
+    if (!data.success)
+      return toast.error(data.message);
+
+    toast.success("Journal Voucher Saved");
+
+    setJournalNo(`JRN-${Date.now()}`);
+    setDebitLedger("");
+    setCreditLedger("");
+    setAmount(0);
+    setNarration("");
+  };
+
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        title="Journal Voucher"
+        description="Record journal entries."
+        actions={
+          <Button onClick={handleSave}>
+            <Save className="size-4" />
+            Save Voucher
+          </Button>
+        }
+      />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Journal Details</CardTitle>
+        </CardHeader>
+
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+
+          <div>
+            <Label>Journal No</Label>
+            <Input
+              value={journalNo}
+              onChange={(e)=>setJournalNo(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <Label>Date</Label>
+            <Input
+              type="date"
+              value={date}
+              onChange={(e)=>setDate(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <Label>Debit Ledger</Label>
+            <Input
+              value={debitLedger}
+              onChange={(e)=>setDebitLedger(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <Label>Credit Ledger</Label>
+            <Input
+              value={creditLedger}
+              onChange={(e)=>setCreditLedger(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <Label>Amount</Label>
+            <Input
+              type="number"
+              value={amount}
+              onChange={(e)=>setAmount(Number(e.target.value))}
+            />
+          </div>
+
+          <div>
+            <Label>Narration</Label>
+            <Input
+              value={narration}
+              onChange={(e)=>setNarration(e.target.value)}
+            />
+          </div>
+
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

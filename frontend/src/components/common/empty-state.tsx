@@ -1,0 +1,35 @@
+import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
+import { Inbox } from "lucide-react";
+
+/**
+ * Empty state shown when a list / table has no results.
+ */
+interface EmptyStateProps {
+  icon?: LucideIcon;
+  title: string;
+  description?: string;
+  action?: ReactNode;
+}
+
+export function EmptyState({
+  icon: Icon = Inbox,
+  title,
+  description,
+  action,
+}: EmptyStateProps) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+      <div className="rounded-full bg-muted p-4 text-muted-foreground">
+        <Icon className="size-7" />
+      </div>
+      <div className="space-y-1">
+        <h3 className="text-base font-semibold text-foreground">{title}</h3>
+        {description && (
+          <p className="mx-auto max-w-sm text-sm text-muted-foreground">{description}</p>
+        )}
+      </div>
+      {action && <div className="mt-1">{action}</div>}
+    </div>
+  );
+}

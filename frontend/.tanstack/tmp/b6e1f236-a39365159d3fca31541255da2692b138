@@ -1,0 +1,316 @@
+import { useEffect, useMemo, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { Plus, Save, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { PageHeader } from "@/components/common/page-header";
+import { formatCurrency } from "@/lib/format";
+import type { InvoiceLine } from "@/types";
+
+import { getCustomers } from "@/services/CustomerService";
+import { getStockItems } from "@/services/stockItemService";
+import { createReceiptVoucher } from "@/services/purchaseService";
+
+export const Route = createFileRoute("/app/receipt")({
+  head: () => ({ meta: [{ title: "Receipt Voucher — SmartERP" }] }),
+  component: ReceiptVoucherPage,
+});
+
+function newLine(): InvoiceLine {
+  return {
+    id: crypto.randomUUID(),
+    itemId: "",
+    name: "",
+    quantity: 1,
+    price: 0,
+    gstRate: 18,
+  };
+}
+
+function ReceiptVoucherPage() {
+  const [Customers, setCustomers] = useState<any[]>([]);
+  const [stockItems, setStockItems] = useState<any[]>([]);
+
+  const [CustomerId, setCustomerId] = useState("");
+  const [receiptNo, setreceiptNo] = useState(`PUR-${Date.now()}`);
+  const [invoiceDate, setInvoiceDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+  const [lines, setLines] = useState<InvoiceLine[]>([newLine()]);
+
+  useEffect(() => {
+    async function loadData() {
+      const CustomerData = await getCustomers();
+      const stockData = await getStockItems();
+
+      if (CustomerData.success) setCustomers(CustomerData.Customers);
+      if (stockData.success) setStockItems(stockData.items);
+    }
+
+    loadData();
+  }, []);
+
+  const Customer = Customers.find((s) => s._id === CustomerId);
+
+  const updateLine = (id: string, patch: Partial<InvoiceLine>) =>
+    setLines((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+
+  const onSelectItem = (lineId: string, itemId: string) => {
+    const item = stockItems.find((s) => s._id === itemId);
+
+    if (!item) return;
+
+    updateLine(lineId, {
+      itemId,
+      name: item.name,
+      price: item.sellingPrice,
+      gstRate: item.gstPercentage ?? item.gstRate ?? 0,
+    });
+  };
+
+  const totals = useMemo(() => {
+    let subtotal = 0;
+    let gst = 0;
+
+    for (const l of lines) {
+      const base = l.quantity * l.price;
+      subtotal += base;
+      gst += (base * l.gstRate) / 100;
+    }
+
+    return { subtotal, gst, grand: subtotal + gst };
+  }, [lines]);
+
+  const handleSave = async () => {
+    if (!Customer) return toast.error("Please select a Customer");
+
+    if (lines.some((l) => !l.itemId)) {
+      return toast.error("Please choose items for all rows");
+    }
+    console.log("Saving Receipt Voucher...");
+    const data = await createReceiptVoucher({
+      customerId: CustomerId,
+      customerName: Customer.name,
+      receiptNo,
+      amount: totals.grand,
+      items: lines,
+      subtotal: totals.subtotal,
+      gst: totals.gst,
+      total: totals.grand,
+    });
+    console.log("Receipt response:", data);
+    if (!data.success) {
+      toast.error(data.message);
+      return;
+    }
+
+    toast.success(`Receipt ${receiptNo} recorded`, {
+      description: `${Customer.name} · ${formatCurrency(totals.grand)}`,
+    });
+
+    setreceiptNo(`PUR-${Date.now()}`);
+    setInvoiceDate(new Date().toISOString().split("T")[0]);
+    setCustomerId("");
+    setLines([newLine()]);
+  };
+
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        title="Receipt Voucher"
+        description="Record a purchase from a Customer and update stock."
+        actions={
+          <Button onClick={handleSave}>
+            <Save className="size-4" /> Save Voucher
+          </Button>
+        }
+      />
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Voucher Details</CardTitle>
+        </CardHeader>
+
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Customer</Label>
+
+            <Select value={CustomerId} onValueChange={setCustomerId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select Customer" />
+              </SelectTrigger>
+
+              <SelectContent>
+                {Customers.map((s) => (
+                  <SelectItem key={s._id} value={s._id}>
+                    {s.name} — {s.state || s.phone || "Customer"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Voucher No.</Label>
+            <Input
+              value={receiptNo}
+              onChange={(e) => setreceiptNo(e.target.value)}
+              className="bg-muted/50"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Invoice Date</Label>
+            <Input
+              type="date"
+              value={invoiceDate}
+              onChange={(e) => setInvoiceDate(e.target.value)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Items</CardTitle>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setLines((prev) => [...prev, newLine()])}
+          >
+            <Plus className="size-4" /> Add Row
+          </Button>
+        </CardHeader>
+
+        <CardContent className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="min-w-[200px]">Item</TableHead>
+                <TableHead className="w-24">Qty</TableHead>
+                <TableHead className="w-32">Rate</TableHead>
+                <TableHead className="w-20">GST</TableHead>
+                <TableHead className="w-32 text-right">Amount</TableHead>
+                <TableHead className="w-10" />
+              </TableRow>
+            </TableHeader>
+
+            <TableBody>
+              {lines.map((l) => (
+                <TableRow key={l.id}>
+                  <TableCell>
+                    <Select
+                      value={l.itemId}
+                      onValueChange={(v) => onSelectItem(l.id, v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select item" />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        {stockItems.map((s) => (
+                          <SelectItem key={s._id} value={s._id}>
+                            {s.name} — Stock: {s.quantity}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+
+                  <TableCell>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={l.quantity}
+                      onChange={(e) =>
+                        updateLine(l.id, {
+                          quantity: Math.max(1, Number(e.target.value)),
+                        })
+                      }
+                    />
+                  </TableCell>
+
+                  <TableCell>
+                    <Input
+                      type="number"
+                      value={l.price}
+                      onChange={(e) =>
+                        updateLine(l.id, { price: Number(e.target.value) })
+                      }
+                    />
+                  </TableCell>
+
+                  <TableCell className="text-sm text-muted-foreground">
+                    {l.gstRate}%
+                  </TableCell>
+
+                  <TableCell className="text-right font-medium">
+                    {formatCurrency(l.quantity * l.price * (1 + l.gstRate / 100))}
+                  </TableCell>
+
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 text-muted-foreground hover:text-destructive"
+                      onClick={() =>
+                        setLines((prev) =>
+                          prev.length > 1
+                            ? prev.filter((x) => x.id !== l.id)
+                            : prev,
+                        )
+                      }
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          <div className="mt-4 flex justify-end">
+            <dl className="w-full max-w-xs space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Subtotal</dt>
+                <dd className="font-medium">{formatCurrency(totals.subtotal)}</dd>
+              </div>
+
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">GST</dt>
+                <dd className="font-medium">{formatCurrency(totals.gst)}</dd>
+              </div>
+
+              <div className="flex justify-between border-t border-border pt-2">
+                <dt className="font-semibold text-foreground">Total</dt>
+                <dd className="font-bold text-primary">
+                  {formatCurrency(totals.grand)}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

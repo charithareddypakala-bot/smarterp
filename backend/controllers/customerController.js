@@ -1,4 +1,4 @@
-const Customer = require("../models/Customer");
+const Customer = require("../models/customer");
 const Ledger = require("../models/Ledger");
 // GET customers of selected company
 exports.getCustomers = async (req, res) => {

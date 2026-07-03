@@ -1,4 +1,4 @@
-const Company = require("../models/Company");
+const Company = require("../models/company");
 
 // GET logged-in user's companies
 exports.getCompanies = async (req, res) => {

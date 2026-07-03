@@ -2,7 +2,9 @@ console.log("🔥 SERVER FILE RUNNING:", __filename);
 
 const express = require("express");
 const mongoose = require("mongoose");
+const connectDB = require("./config/db");
 const cors = require("cors");
+
 require("dotenv").config();
 
 const authRoutes = require("./routes/authRoutes");
@@ -102,6 +104,7 @@ mongoose
     app.listen(PORT, () => {
       console.log(`✅ Server running on port ${PORT}`);
       console.log("✅ ROUTES LOADED");
+      connectDB();
     });
   })
   .catch((err) => {

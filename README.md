@@ -1,6 +1,5 @@
-# Nebula Biz Forge
-
-Nebula Biz Forge is a business management web application for handling accounting, inventory, companies, customers, suppliers, vouchers, ledgers, reports, GST summaries, banking, and stock workflows.
+#Smarterp
+Smarterp is a business management web application for handling accounting, inventory, companies, customers, suppliers, vouchers, ledgers, reports, GST summaries, banking, and stock workflows.
 
 The project contains a React/TanStack frontend and an Express/MongoDB backend.
 

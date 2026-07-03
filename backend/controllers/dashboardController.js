@@ -3,7 +3,7 @@ const PurchaseVoucher = require("../models/PurchaseVoucher");
 const ReceiptVoucher = require("../models/ReceiptVoucher");
 const PaymentVoucher = require("../models/PaymentVoucher");
 const StockItem = require("../models/StockItem");
-const Customer = require("../models/Customer");
+const Customer = require("../models/customer");
 const Supplier = require("../models/Supplier");
 
 exports.getDashboard = async (req, res) => {

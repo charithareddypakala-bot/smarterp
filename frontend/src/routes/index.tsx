@@ -22,51 +22,97 @@ export const Route = createFileRoute("/")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("charitha@gmail.com");
   const [password, setPassword] = useState("123456");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Frontend-only demo login — no backend, just simulate a request.
-  // The workspace is derived from the company email; we go straight to the
-  // dashboard, no company-selection step.
-  const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
+  const isSignUp = mode === "signup";
 
-  try {
-    const response = await fetch("https://smarterp-production-b6c9.up.railway.app/api/auth/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email,
-        password,
-      }),
-    });
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
 
-    const data = await response.json();
-
-    if (data.success) {
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-
-      toast.success("Login successful", {
-        description: "Select your company to continue.",
+    try {
+      const response = await fetch("https://smarterp-production-b6c9.up.railway.app/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
       });
 
-      navigate({ to: "/companies" });
-    } else {
-      toast.error(data.message);
+      const data = await response.json();
+
+      if (data.success) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+
+        toast.success("Login successful", {
+          description: "Select your company to continue.",
+        });
+
+        navigate({ to: "/companies" });
+      } else {
+        toast.error(data.message || "Login failed.");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Login failed. Check backend server.");
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error(error);
-    toast.error("Login failed. Check backend server.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch("https://smarterp-production-b6c9.up.railway.app/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("Account created successfully", {
+          description: "You can sign in with your new account now.",
+        });
+        setMode("signin");
+        setName("");
+        setPassword("");
+        setConfirmPassword("");
+      } else {
+        toast.error(data.message || "Sign up failed.");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Sign up failed. Check backend server.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
@@ -85,14 +131,31 @@ function LoginPage() {
 
           <div className="mb-8 space-y-1.5">
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              Sign in to your account
+              {isSignUp ? "Create your account" : "Sign in to your account"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Enter your company email to open your workspace dashboard.
+              {isSignUp
+                ? "Create a workspace account to start using SmartERP."
+                : "Enter your company email to open your workspace dashboard."}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={isSignUp ? handleSignUp : handleSignIn} className="space-y-4">
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="name">Full name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  autoComplete="name"
+                  placeholder="Jane Doe"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email">Company email</Label>
               <div className="relative">
@@ -113,20 +176,22 @@ function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <button
-                  type="button"
-                  onClick={() => toast.info("Password reset link sent to your email.")}
-                  className="text-xs font-medium text-primary hover:underline"
-                >
-                  Forgot password?
-                </button>
+                {!isSignUp && (
+                  <button
+                    type="button"
+                    onClick={() => toast.info("Password reset link sent to your email.")}
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                )}
               </div>
               <div className="relative">
                 <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
+                  autoComplete={isSignUp ? "new-password" : "current-password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="px-9"
@@ -143,26 +208,43 @@ function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Checkbox id="remember" defaultChecked />
-              <Label htmlFor="remember" className="text-sm font-normal text-muted-foreground">
-                Keep me signed in
-              </Label>
-            </div>
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm password</Label>
+                <Input
+                  id="confirmPassword"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+
+            {!isSignUp && (
+              <div className="flex items-center gap-2">
+                <Checkbox id="remember" defaultChecked />
+                <Label htmlFor="remember" className="text-sm font-normal text-muted-foreground">
+                  Keep me signed in
+                </Label>
+              </div>
+            )}
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="size-4 animate-spin" />}
-              {loading ? "Signing in…" : "Sign in"}
+              {loading ? (isSignUp ? "Creating account…" : "Signing in…") : isSignUp ? "Create account" : "Sign in"}
             </Button>
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
+            {isSignUp ? "Already have an account?" : "Don&apos;t have an account?"}{" "}
             <button
-              onClick={() => toast.info("Contact your administrator to request access.")}
+              type="button"
+              onClick={() => setMode(isSignUp ? "signin" : "signup")}
               className="font-medium text-primary hover:underline"
             >
-              Request access
+              {isSignUp ? "Sign in" : "Create account"}
             </button>
           </p>
         </div>

@@ -1,4 +1,4 @@
-const API = "http://localhost:5000/api/damaged-stock";
+const API = "https://smarterp-production-b6c9.up.railway.app/api/damaged-stock";
 
 function token() {
   return localStorage.getItem("token");

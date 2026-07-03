@@ -35,7 +35,7 @@ function LoginPage() {
   setLoading(true);
 
   try {
-    const response = await fetch("http://localhost:5000/api/auth/login", {
+    const response = await fetch("https://smarterp-production-b6c9.up.railway.app/api/auth/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -88,16 +88,11 @@ app.use("/api/inventory-adjustments", inventoryAdjustmentRoutes);
 app.use("/api/reserved-stock", reservedStockRoutes);
 app.use("/api/damaged-stock", damagedStockRoutes);
 app.use("/api/company-profile", companyProfileRoutes);
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => console.log(err));
-
 const PORT = process.env.PORT || 5000;
-
+const mongoUri = process.env.MONGO_URL || process.env.MONGO_URI;
 
 mongoose
-  .connect(process.env.MONGO_URI)
+  .connect(mongoUri)
   .then(() => {
     console.log("✅ MongoDB Connected");
 

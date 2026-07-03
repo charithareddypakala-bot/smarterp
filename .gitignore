@@ -13,6 +13,7 @@ dist-ssr
 .output
 .vinxi
 .tanstack/**
+.tanstack/tmp/
 .nitro
 *.local
 
@@ -30,3 +31,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.env
+backend/.env

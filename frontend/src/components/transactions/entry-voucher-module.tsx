@@ -20,6 +20,8 @@ interface EntryVoucherModuleProps {
   accountLabel: string;
   actionLabel: string;
   data: VoucherEntry[];
+  /** Optional custom actions to render in the header (overrides default create button) */
+  headerActions?: React.ReactNode;
 }
 
 export function EntryVoucherModule({
@@ -28,6 +30,7 @@ export function EntryVoucherModule({
   accountLabel,
   actionLabel,
   data,
+  headerActions,
 }: EntryVoucherModuleProps) {
   const table = useTable(data, { searchKeys: ["id", "account", "particulars"], pageSize: 8 });
 
@@ -54,15 +57,11 @@ export function EntryVoucherModule({
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title={title}
-        description={description}
-        actions={
-          <Button onClick={() => toast.info(`${actionLabel} form coming soon`)}>
-            <Plus className="size-4" /> {actionLabel}
-          </Button>
-        }
-      />
+      <PageHeader title={title} description={description} actions={headerActions ?? (
+        <Button onClick={() => toast.info(`${actionLabel} form coming soon`)}>
+          <Plus className="size-4" /> {actionLabel}
+        </Button>
+      )} />
       <SearchBar value={table.search} onChange={table.setSearch} placeholder="Search vouchers…" />
       <DataTable
         columns={columns}

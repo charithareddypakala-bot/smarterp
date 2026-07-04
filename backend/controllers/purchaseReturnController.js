@@ -8,12 +8,34 @@ exports.createPurchaseReturn = async (req, res) => {
       userId: req.user.id,
     });
 
+    // Update stock quantities. If item.restock is true, increase stock, otherwise decrease.
     for (const item of req.body.items) {
       if (item.itemId) {
+        const delta = item.restock ? Number(item.quantity || 0) : -Number(item.quantity || 0);
         await StockItem.findByIdAndUpdate(item.itemId, {
-          $inc: { quantity: -Number(item.quantity) },
+          $inc: { quantity: delta },
         });
       }
+    }
+
+    // Create a payment-like adjustment to reduce supplier payable when a purchase return occurs
+    try {
+      const PaymentVoucher = require("../models/PaymentVoucher");
+
+      if (voucher.supplierId && (voucher.total || voucher.totalAmount)) {
+        await PaymentVoucher.create({
+          companyId: voucher.companyId,
+          userId: req.user.id,
+          supplierId: voucher.supplierId,
+          supplierName: voucher.supplierName,
+          paymentNo: voucher.returnNo || `PR-${Date.now()}`,
+          amount: voucher.total || voucher.totalAmount || 0,
+          mode: "Adjustment",
+          note: "Purchase return adjustment",
+        });
+      }
+    } catch (err) {
+      console.warn("Failed to create payment adjustment for purchase return:", err.message || err);
     }
 
     res.status(201).json({
